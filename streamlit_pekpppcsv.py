@@ -21,18 +21,19 @@ file = st.file_uploader("📤 Upload CSV file", type=["csv"])
 def transform_users(df, id_col, name_col):
     output = []
 
-    # Baris pertama (index 0) adalah parent (ID 529 dalam contoh)
+    # Ambil ID parent dari baris pertama (index 0)
     parent_id = df.iloc[0][id_col]
 
-    # Iterasi dimulai dari baris ke-2 di dataframe (index 1 dst) karena aturan menyatakan baris 1 & 2 di csv adalah deskripsi/parent
+    # Iterasi dimulai dari baris ke-2 (index 1) untuk melewatkan data parent
     for _, row in df.iloc[1:].iterrows():
+        # Memastikan mengambil nilai berdasarkan nama kolom yang dipilih user
         user_id = row[id_col]
-        name = row[name_col]
+        user_name = row[name_col]  # Menggunakan nama kolom nama yang sesuai
 
         # form_sheet_id berulang dari 1 sampai 3
         for c in [1, 2, 3]:
             new_row = {
-                "name": name,
+                "name": user_name,          # Mengisi kolom 'name' dengan nama teks instansi (bukan ID)
                 "template_id": 1,
                 "form_sheet_id": c,
                 "is_public": 1 if c == 3 else 0,
@@ -46,7 +47,7 @@ def transform_users(df, id_col, name_col):
             elif c == 2:
                 new_row["isi"] = parent_id
             elif c == 3:
-                new_row["isi"] = "" # Kosong saat form_sheet_id = 3 (atau sesuai aturan ke-5 Anda: 'tidak diisi ketika form_sheet_id=1' tampaknya maksudnya adalah ketika c=3 jika merujuk gambar)
+                new_row["isi"] = "" 
 
             # Aturan kolom 'lihat'
             if c == 3:
@@ -60,21 +61,26 @@ if file:
     try:
         # Read CSV safely
         df = pd.read_csv(file, sep=None, engine='python')
-        df.columns = df.columns.str.strip().str.lower()
+        
+        # Bersihkan spasi pada nama kolom asal agar tidak error saat pencocokan
+        df.columns = df.columns.str.strip()
 
         st.success("✅ File uploaded successfully!")
 
-        # Preview data
+        # Preview data asal
         st.subheader("🔍 Data Preview")
         st.dataframe(df.head())
 
         # Column selection (user-friendly)
         st.subheader("⚙️ Select Columns")
-
         columns = df.columns.tolist()
 
-        id_col = st.selectbox("Select ID column", columns)
-        name_col = st.selectbox("Select Name column", columns)
+        # Deteksi otomatis kolom agar user tidak salah pilih
+        default_id_index = next((i for i, col in enumerate(columns) if 'id' in col.lower()), 0)
+        default_name_index = next((i for i, col in enumerate(columns) if 'nam' in col.lower()), 0)
+
+        id_col = st.selectbox("Select ID column (e.g., 'Id')", columns, index=default_id_index)
+        name_col = st.selectbox("Select Name column (e.g., 'Name')", columns, index=default_name_index)
 
         # Process button
         if st.button("🚀 Transform Data"):
@@ -82,9 +88,9 @@ if file:
 
             st.success("🎉 Transformation complete!")
 
-            # Preview result
+            # Preview hasil akhir
             st.subheader("📊 Output Preview")
-            st.dataframe(result.head(15)) # Menampilkan 15 baris pertama untuk melihat siklus perulangan id 1-3
+            st.dataframe(result.head(15)) 
 
             # Download
             st.download_button(
