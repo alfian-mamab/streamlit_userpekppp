@@ -10,13 +10,13 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="CSV Transformer", layout="centered")
+st.set_page_config(page_title="File Transformer", layout="centered")
 
-st.title("📄 CSV Transformer Tool")
-st.write("Upload your CSV file and convert it automatically.")
+st.title("📄 File Transformer Tool (CSV & Excel)")
+st.write("Upload your CSV or Excel file and convert it automatically.")
 
-# Upload file
-file = st.file_uploader("📤 Upload CSV file", type=["csv"])
+# 1. Perbarui file uploader agar menerima excel (.xlsx, .xls)
+file = st.file_uploader("📤 Upload CSV or Excel file", type=["csv", "xlsx", "xls"])
 
 def transform_users(df, id_col, name_col):
     output = []
@@ -26,14 +26,13 @@ def transform_users(df, id_col, name_col):
 
     # Iterasi dimulai dari baris ke-2 (index 1) untuk melewatkan data parent
     for _, row in df.iloc[1:].iterrows():
-        # Memastikan mengambil nilai berdasarkan nama kolom yang dipilih user
         user_id = row[id_col]
-        user_name = row[name_col]  # Menggunakan nama kolom nama yang sesuai
+        user_name = row[name_col]
 
         # form_sheet_id berulang dari 1 sampai 3
         for c in [1, 2, 3]:
             new_row = {
-                "name": user_name,          # Mengisi kolom 'name' dengan nama teks instansi (bukan ID)
+                "name": user_name,          
                 "template_id": 1,
                 "form_sheet_id": c,
                 "is_public": 1 if c == 3 else 0,
@@ -59,10 +58,14 @@ def transform_users(df, id_col, name_col):
 
 if file:
     try:
-        # Read CSV safely
-        df = pd.read_csv(file, sep=None, engine='python')
+        # 2. Logika untuk mendeteksi tipe file dan membaca sheet pertama jika Excel
+        if file.name.endswith(('.xlsx', '.xls')):
+            # sheet_name=0 memastikan sistem selalu mengambil sheet pertama
+            df = pd.read_excel(file, sheet_name=0)
+        else:
+            df = pd.read_csv(file, sep=None, engine='python')
         
-        # Bersihkan spasi pada nama kolom asal agar tidak error saat pencocokan
+        # Bersihkan spasi di awal/akhir nama kolom asal
         df.columns = df.columns.str.strip()
 
         st.success("✅ File uploaded successfully!")
@@ -71,16 +74,17 @@ if file:
         st.subheader("🔍 Data Preview")
         st.dataframe(df.head())
 
-        # Column selection (user-friendly)
+        # Column selection
         st.subheader("⚙️ Select Columns")
         columns = df.columns.tolist()
 
-        # Deteksi otomatis kolom agar user tidak salah pilih
-        default_id_index = next((i for i, col in enumerate(columns) if 'id' in col.lower()), 0)
+        # 3. Solusi untuk variasi penamaan (ID, Id, name, Name): 
+        # Mencari kecocokan menggunakan huruf kecil (.lower()) tanpa mengubah nama asli kolom data
+        default_id_index = next((i for i, col in enumerate(columns) if col.lower() == 'id'), 0)
         default_name_index = next((i for i, col in enumerate(columns) if 'nam' in col.lower()), 0)
 
-        id_col = st.selectbox("Select ID column (e.g., 'Id')", columns, index=default_id_index)
-        name_col = st.selectbox("Select Name column (e.g., 'Name')", columns, index=default_name_index)
+        id_col = st.selectbox("Select ID column", columns, index=default_id_index)
+        name_col = st.selectbox("Select Name column", columns, index=default_name_index)
 
         # Process button
         if st.button("🚀 Transform Data"):
@@ -92,7 +96,7 @@ if file:
             st.subheader("📊 Output Preview")
             st.dataframe(result.head(15)) 
 
-            # Download
+            # Download hasil sebagai CSV
             st.download_button(
                 "⬇️ Download CSV",
                 result.to_csv(index=False),
@@ -105,4 +109,4 @@ if file:
         st.write(str(e))
 
 else:
-    st.info("Please upload a CSV file to begin.")
+    st.info("Please upload a CSV or Excel file to begin.")
