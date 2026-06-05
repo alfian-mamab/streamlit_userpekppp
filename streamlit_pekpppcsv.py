@@ -10,19 +10,24 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 
-st.title("CSV Transformer")
+st.set_page_config(page_title="CSV Transformer", layout="centered")
 
-file = st.file_uploader("Upload CSV")
+st.title("📄 CSV Transformer Tool")
+st.write("Upload your CSV file and convert it automatically.")
 
-def transform_users(df):
+# Upload file
+file = st.file_uploader("📤 Upload CSV file", type=["csv"])
+
+def transform_users(df, id_col, name_col):
     output = []
-    default_id = df.iloc[0]['id']
+
+    default_id = df.iloc[0][id_col]
 
     for _, row in df.iterrows():
-        user_id = row['id']
-        name = row['name']
+        user_id = row[id_col]
+        name = row[name_col]
 
-        for c in [1,2,3]:
+        for c in [1, 2, 3]:
             new_row = {
                 "name": name,
                 "template_form_she": 1,
@@ -45,17 +50,46 @@ def transform_users(df):
     return pd.DataFrame(output)
 
 if file:
-    df = pd.read_csv(file)
-    result = transform_users(df)
+    try:
+        # Read CSV safely
+        df = pd.read_csv(file, sep=None, engine='python')
+        df.columns = df.columns.str.strip().str.lower()
 
-    st.download_button(
-        "Download CSV",
-        result.to_csv(index=False),
-        "output.csv"
-    )
+        st.success("✅ File uploaded successfully!")
 
-# requirements.txt
-reqs = ["streamlit", "pandas"]
-with open("requirements.txt", "w") as f:
-    f.write("\n".join(reqs))
+        # Preview data
+        st.subheader("🔍 Data Preview")
+        st.dataframe(df.head())
 
+        # Column selection (user-friendly)
+        st.subheader("⚙️ Select Columns")
+
+        columns = df.columns.tolist()
+
+        id_col = st.selectbox("Select ID column", columns)
+        name_col = st.selectbox("Select Name column", columns)
+
+        # Process button
+        if st.button("🚀 Transform Data"):
+            result = transform_users(df, id_col, name_col)
+
+            st.success("🎉 Transformation complete!")
+
+            # Preview result
+            st.subheader("📊 Output Preview")
+            st.dataframe(result.head())
+
+            # Download
+            st.download_button(
+                "⬇️ Download CSV",
+                result.to_csv(index=False),
+                "output.csv",
+                mime="text/csv"
+            )
+
+    except Exception as e:
+        st.error("❌ Error processing file")
+        st.write(str(e))
+
+else:
+    st.info("Please upload a CSV file to begin.")
