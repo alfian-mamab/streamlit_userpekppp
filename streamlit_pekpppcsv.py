@@ -21,27 +21,34 @@ file = st.file_uploader("📤 Upload CSV file", type=["csv"])
 def transform_users(df, id_col, name_col):
     output = []
 
-    default_id = df.iloc[0][id_col]
+    # Baris pertama (index 0) adalah parent (ID 529 dalam contoh)
+    parent_id = df.iloc[0][id_col]
 
-    for _, row in df.iterrows():
+    # Iterasi dimulai dari baris ke-2 di dataframe (index 1 dst) karena aturan menyatakan baris 1 & 2 di csv adalah deskripsi/parent
+    for _, row in df.iloc[1:].iterrows():
         user_id = row[id_col]
         name = row[name_col]
 
+        # form_sheet_id berulang dari 1 sampai 3
         for c in [1, 2, 3]:
             new_row = {
                 "name": name,
-                "template_form_she": 1,
-                "is_public": c,
-                "is_flag": 1 if c == 3 else 0,
+                "template_id": 1,
+                "form_sheet_id": c,
+                "is_public": 1 if c == 3 else 0,
                 "isi": "",
                 "lihat": ""
             }
 
+            # Aturan kolom 'isi'
             if c == 1:
                 new_row["isi"] = user_id
             elif c == 2:
-                new_row["isi"] = default_id
+                new_row["isi"] = parent_id
+            elif c == 3:
+                new_row["isi"] = "" # Kosong saat form_sheet_id = 3 (atau sesuai aturan ke-5 Anda: 'tidak diisi ketika form_sheet_id=1' tampaknya maksudnya adalah ketika c=3 jika merujuk gambar)
 
+            # Aturan kolom 'lihat'
             if c == 3:
                 new_row["lihat"] = user_id
 
@@ -77,7 +84,7 @@ if file:
 
             # Preview result
             st.subheader("📊 Output Preview")
-            st.dataframe(result.head())
+            st.dataframe(result.head(15)) # Menampilkan 15 baris pertama untuk melihat siklus perulangan id 1-3
 
             # Download
             st.download_button(
