@@ -9,30 +9,31 @@ Original file is located at
 
 import streamlit as st
 import pandas as pd
+from io import BytesIO
 
 st.set_page_config(page_title="File Transformer", layout="centered")
 
-st.title("Transformasi File Pembuatan User PEKPPP")
-st.write("Unggah file excel/csv anda disini untuk konversi")
+st.title("📄 Transformasi File Pembuatan User PEKPPP")
+st.write("Unggah file CSV atau Excel untuk dikonversi secara otomatis.")
 
-# 1. Perbarui file uploader agar menerima excel (.xlsx, .xls)
+# Upload file
 file = st.file_uploader("📤 Upload CSV or Excel file", type=["csv", "xlsx", "xls"])
+
 
 def transform_users(df, id_col, name_col):
     output = []
 
-    # Ambil ID parent dari baris pertama (index 0)
+    # Ambil ID parent dari baris pertama
     parent_id = df.iloc[0][id_col]
 
-    # Iterasi dimulai dari baris ke-2 (index 1) untuk melewatkan data parent
+    # Iterasi mulai baris kedua
     for _, row in df.iloc[1:].iterrows():
         user_id = row[id_col]
         user_name = row[name_col]
 
-        # form_sheet_id berulang dari 1 sampai 3
         for c in [1, 2, 3]:
             new_row = {
-                "name": user_name,          
+                "name": user_name,
                 "template_id": 1,
                 "form_sheet_id": c,
                 "is_public": 1 if c == 3 else 0,
@@ -40,15 +41,13 @@ def transform_users(df, id_col, name_col):
                 "lihat": ""
             }
 
-            # Aturan kolom 'isi'
+            # Logic isi
             if c == 1:
                 new_row["isi"] = user_id
             elif c == 2:
                 new_row["isi"] = parent_id
-            elif c == 3:
-                new_row["isi"] = "" 
 
-            # Aturan kolom 'lihat'
+            # Logic lihat
             if c == 3:
                 new_row["lihat"] = user_id
 
@@ -56,21 +55,21 @@ def transform_users(df, id_col, name_col):
 
     return pd.DataFrame(output)
 
+
 if file:
     try:
-        # 2. Logika untuk mendeteksi tipe file dan membaca sheet pertama jika Excel
+        # Detect file type
         if file.name.endswith(('.xlsx', '.xls')):
-            # sheet_name=0 memastikan sistem selalu mengambil sheet pertama
             df = pd.read_excel(file, sheet_name=0)
         else:
             df = pd.read_csv(file, sep=None, engine='python')
-        
-        # Bersihkan spasi di awal/akhir nama kolom asal
+
+        # Bersihkan nama kolom
         df.columns = df.columns.str.strip()
 
         st.success("✅ File uploaded successfully!")
 
-        # Preview data asal
+        # Preview data
         st.subheader("🔍 Data Preview")
         st.dataframe(df.head())
 
@@ -78,30 +77,38 @@ if file:
         st.subheader("⚙️ Select Columns")
         columns = df.columns.tolist()
 
-        # 3. Solusi untuk variasi penamaan (ID, Id, name, Name): 
-        # Mencari kecocokan menggunakan huruf kecil (.lower()) tanpa mengubah nama asli kolom data
+        # Auto-detect kolom ID dan Name
         default_id_index = next((i for i, col in enumerate(columns) if col.lower() == 'id'), 0)
         default_name_index = next((i for i, col in enumerate(columns) if 'nam' in col.lower()), 0)
 
         id_col = st.selectbox("Select ID column", columns, index=default_id_index)
         name_col = st.selectbox("Select Name column", columns, index=default_name_index)
 
-        # Process button
+        # Transform button
         if st.button("🚀 Transform Data"):
-            result = transform_users(df, id_col, name_col)
+            with st.spinner("Processing..."):
+                result = transform_users(df, id_col, name_col)
 
             st.success("🎉 Transformation complete!")
 
-            # Preview hasil akhir
+            # Preview hasil
             st.subheader("📊 Output Preview")
-            st.dataframe(result.head(15)) 
+            st.dataframe(result.head(15))
 
-            # Download hasil sebagai CSV
+            # Convert ke Excel (in memory)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False, sheet_name='Output')
+                df.to_excel(writer, index=False, sheet_name='Original')
+
+            excel_data = output.getvalue()
+
+            # Download button
             st.download_button(
-                "⬇️ Download CSV",
-                result.to_csv(index=False),
-                "output.csv",
-                mime="text/csv"
+                label="⬇️ Download Excel",
+                data=excel_data,
+                file_name="output.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
     except Exception as e:
@@ -109,4 +116,4 @@ if file:
         st.write(str(e))
 
 else:
-    st.info("Please upload a CSV or Excel file to begin.")
+    st.info("📌 Please upload a CSV or Excel file to begin.")
