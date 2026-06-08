@@ -16,17 +16,14 @@ st.set_page_config(page_title="File Transformer", layout="centered")
 st.title("📄 Transformasi File Pembuatan User PEKPPP")
 st.write("Unggah file CSV atau Excel untuk dikonversi secara otomatis.")
 
-# Upload file
 file = st.file_uploader("📤 Upload CSV or Excel file", type=["csv", "xlsx", "xls"])
 
 
 def transform_users(df, id_col, name_col):
     output = []
 
-    # Ambil ID parent dari baris pertama
     parent_id = df.iloc[0][id_col]
 
-    # Iterasi mulai baris kedua
     for _, row in df.iloc[1:].iterrows():
         user_id = row[id_col]
         user_name = row[name_col]
@@ -41,13 +38,11 @@ def transform_users(df, id_col, name_col):
                 "lihat": ""
             }
 
-            # Logic isi
             if c == 1:
                 new_row["isi"] = user_id
             elif c == 2:
                 new_row["isi"] = parent_id
 
-            # Logic lihat
             if c == 3:
                 new_row["lihat"] = user_id
 
@@ -58,52 +53,43 @@ def transform_users(df, id_col, name_col):
 
 if file:
     try:
-        # Detect file type
         if file.name.endswith(('.xlsx', '.xls')):
             df = pd.read_excel(file, sheet_name=0)
         else:
             df = pd.read_csv(file, sep=None, engine='python')
 
-        # Bersihkan nama kolom
         df.columns = df.columns.str.strip()
 
         st.success("✅ File uploaded successfully!")
 
-        # Preview data
         st.subheader("🔍 Data Preview")
         st.dataframe(df.head())
 
-        # Column selection
         st.subheader("⚙️ Select Columns")
         columns = df.columns.tolist()
 
-        # Auto-detect kolom ID dan Name
         default_id_index = next((i for i, col in enumerate(columns) if col.lower() == 'id'), 0)
         default_name_index = next((i for i, col in enumerate(columns) if 'nam' in col.lower()), 0)
 
         id_col = st.selectbox("Select ID column", columns, index=default_id_index)
         name_col = st.selectbox("Select Name column", columns, index=default_name_index)
 
-        # Transform button
         if st.button("🚀 Transform Data"):
             with st.spinner("Processing..."):
                 result = transform_users(df, id_col, name_col)
 
             st.success("🎉 Transformation complete!")
 
-            # Preview hasil
             st.subheader("📊 Output Preview")
             st.dataframe(result.head(15))
 
-            # Convert ke Excel (in memory)
+            # Excel output (ONLY 1 SHEET)
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 result.to_excel(writer, index=False, sheet_name='Output')
-                df.to_excel(writer, index=False, sheet_name='Original')
 
             excel_data = output.getvalue()
 
-            # Download button
             st.download_button(
                 label="⬇️ Download Excel",
                 data=excel_data,
