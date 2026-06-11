@@ -53,49 +53,71 @@ def transform_users(df, id_col, name_col):
 
 if file:
     try:
+        # Detect file type
         if file.name.endswith(('.xlsx', '.xls')):
             df = pd.read_excel(file, sheet_name=0)
         else:
             df = pd.read_csv(file, sep=None, engine='python')
 
+        # Clean column names
         df.columns = df.columns.str.strip()
 
         st.success("✅ File uploaded successfully!")
 
+        # Preview data
         st.subheader("🔍 Data Preview")
         st.dataframe(df.head())
 
+        # Column selection
         st.subheader("⚙️ Select Columns")
         columns = df.columns.tolist()
 
+        # Auto detect column
         default_id_index = next((i for i, col in enumerate(columns) if col.lower() == 'id'), 0)
         default_name_index = next((i for i, col in enumerate(columns) if 'nam' in col.lower()), 0)
 
         id_col = st.selectbox("Select ID column", columns, index=default_id_index)
         name_col = st.selectbox("Select Name column", columns, index=default_name_index)
 
+        # Transform button
         if st.button("🚀 Transform Data"):
             with st.spinner("Processing..."):
                 result = transform_users(df, id_col, name_col)
 
             st.success("🎉 Transformation complete!")
 
+            # Preview hasil
             st.subheader("📊 Output Preview")
             st.dataframe(result.head(15))
 
-            # Excel output (ONLY 1 SHEET)
+            # ===== CSV =====
+            csv_data = result.to_csv(index=False)
+
+            # ===== EXCEL =====
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 result.to_excel(writer, index=False, sheet_name='Output')
 
             excel_data = output.getvalue()
 
-            st.download_button(
-                label="⬇️ Download Excel",
-                data=excel_data,
-                file_name="output.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            # ===== DOWNLOAD BUTTONS (SIDE BY SIDE) =====
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.download_button(
+                    label="⬇️ Download CSV",
+                    data=csv_data,
+                    file_name="output.csv",
+                    mime="text/csv"
+                )
+
+            with col2:
+                st.download_button(
+                    label="⬇️ Download Excel (.xlsx)",
+                    data=excel_data,
+                    file_name="output.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
     except Exception as e:
         st.error("❌ Error processing file")
