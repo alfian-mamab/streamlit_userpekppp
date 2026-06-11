@@ -105,7 +105,7 @@ if file:
 
             with col1:
                 st.download_button(
-                    label="⬇️ Download CSV",
+                    label="⬇️ Download CSV (.csv)",
                     data=csv_data,
                     file_name="output.csv",
                     mime="text/csv"
